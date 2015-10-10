@@ -47,8 +47,8 @@ This function determines the left boundary of the column and the anchor position
 for searching for the other column boundaries. If BIG-WORD is non-nil, the basis
 will be the start of an evil WORD.
 Return nil if no suitable column basis found."
-  (if (or (and (looking-at (rx (1+ whitespace)))
-               (looking-back (rx bol (0+ whitespace)))))
+  (if (and (looking-at (rx (1+ whitespace)))
+           (looking-back (rx bol (0+ whitespace))))
       nil
     ;; move to start of word if not at start of word
     (when (or (looking-at (rx (0+ whitespace) eol))
