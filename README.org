@@ -1,0 +1,16 @@
+* About
+This package is a port of [[https://github.com/coderifous/textobj-word-column.vim][textobj-word-column.vim]]. It provides text objects for selecting a column whose width is determined by an evil word or WORD. This can be a convenient way to start a visual block selection for example.
+
+Currently, there is no outer text object because I never found it useful in the vim version and it would be more difficult to implement. If anyone would find it useful, feel free to make an issue. Another difference from the original plugin is that whitespace (only) will not be selected as a column.
+
+This package takes a fairly generic approach for determining what a column is. If you find a situation where you think the selection should be different or there is clearly a bug, please make an issue.
+
+* Configuration
+No keys are bound by default. Here is some suggested configuration:
+#+begin_src emacs-lisp
+(define-key evil-inner-text-objects-map "c" 'evil-textobj-word-column-inner-column)
+(define-key evil-inner-text-objects-map "C" 'evil-textobj-word-column-inner-COLUMN)
+#+end_src
+
+If you are using a comment text object (for example the one from [[https://github.com/luxbock/evil-cleverparens][evil-cleverparens]]), you may want to use something like =k= instead.
+
