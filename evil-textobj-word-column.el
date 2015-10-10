@@ -41,7 +41,7 @@
 :package evil-textobj-word-column
 :group evil
 
-(defun -basis ()
+(defun -get-basis ()
   "Move to the start of a column delimiter and return type of the column start.
 This function determines the left boundary of the column and the anchor position
 for searching for the other column boundaries.
@@ -57,10 +57,10 @@ Return nil if no suitable column basis found."
                   (evil-forward-word-begin)
                   (not (= current-pos (point))))))
       (evil-backward-word-begin))
-    (cond ((looking-back (rx whitespace))
-           'whitespace)
-          ((looking-back (rx bol))
+    (cond ((looking-back (rx bol))
            'bol)
+          ((looking-back (rx whitespace))
+           'whitespace)
           (t
            'char))))
 
@@ -130,7 +130,7 @@ BEHIND-CHAR-TYPE and MAX-RIGHT-COL."
   ;; this is necessary so c and d don't alter evil-next/previous-line:
   (evil-normal-state)
   (save-excursion
-    (let* ((behind-char-type (-basis))  ; ensures at word start
+    (let* ((behind-char-type (-get-basis))  ; ensures at word start
            (top-bounds (when behind-char-type
                          (-get-top-bounds behind-char-type)))
            (top-left-pos (when top-bounds
