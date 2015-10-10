@@ -24,8 +24,8 @@
 
 ;;; Commentary:
 ;; This package is a port of the vim textobj-word-column plugin. It provides a
-;; text object for selecting a column whose width is defined by an evil word.
-;; This can be a convenient way to start a visual block selection.
+;; text object for selecting a column whose width is defined by an evil word
+;; or WORD. This can be a convenient way to start a visual block selection.
 
 ;; For more information see the README in the github repo.
 
@@ -41,10 +41,11 @@
 :package evil-textobj-word-column
 :group evil
 
-(defun -get-basis ()
+(defun -get-basis (big-word)
   "Move to the start of a column delimiter and return type of the column start.
 This function determines the left boundary of the column and the anchor position
-for searching for the other column boundaries.
+for searching for the other column boundaries. If BIG-WORD is non-nil, the basis
+will be the start of an evil WORD.
 Return nil if no suitable column basis found."
   (if (or (and (looking-at (rx (1+ whitespace)))
                (looking-back (rx bol (0+ whitespace)))))
@@ -53,10 +54,16 @@ Return nil if no suitable column basis found."
     (when (or (looking-at (rx (0+ whitespace) eol))
               (let ((current-pos (point)))
                 (save-excursion
-                  (evil-backward-word-begin)
-                  (evil-forward-word-begin)
+                  (cond (big-word
+                         (evil-backward-WORD-begin)
+                         (evil-forward-WORD-begin))
+                        (t
+                         (evil-backward-word-begin)
+                         (evil-forward-word-begin)))
                   (not (= current-pos (point))))))
-      (evil-backward-word-begin))
+      (if big-word
+          (evil-backward-WORD-begin)
+        (evil-backward-word-begin)))
     (cond ((looking-back (rx bol))
            'bol)
           ((looking-back (rx whitespace))
@@ -64,30 +71,36 @@ Return nil if no suitable column basis found."
           (t
            'char))))
 
-;; TODO: add big or small word option
-(defun -get-bounds (behind-char-type movement-function &optional max-right-col)
+(defun -get-bounds (behind-char-type movement-function big-word
+                                     &optional max-right-col)
   "Helper function to get the bounds in a direction.
 BEHIND-CHAR-TYPE is used as reference to determine where the column ends.
 MOVEMENT-FUNCTION is a function to be called (to move up or down).
+If BIG-WORD is non-nil, the width of the colum will be that of an evil WORD.
 MAX-RIGHT-COL is specified when a previous maximum column position (determined
 by the end the word at each line) has been found.
 Return a list of of buffer positions designating the column bounds where the
 first is the upper left bound and the second is the lower right bound."
-  (let ((col-pos (current-column))
+  (let ((initial-col (current-column))
         (max-right-col (or max-right-col 0))
         max-pos)
     (cl-flet ((continue-check-function
                (cond ((eq behind-char-type 'whitespace)
                       (lambda () (and (looking-back (rx whitespace))
-                                      (not (looking-back (rx bol))))))
+                                      (not (looking-back (rx bol)))
+                                      (not (looking-at (rx eol))))))
                      ;; consider looking at front char too
                      ((eq behind-char-type 'bol)
                       (lambda () (not (looking-at (rx (0+ whitespace) eol)))))
                      ((eq behind-char-type 'char)
                       (lambda ()
-                        (evil-backward-word-begin)
-                        (evil-forward-word-begin)
-                        (= col-pos (current-column)))))))
+                        (cond (big-word
+                               (evil-backward-WORD-begin)
+                               (evil-forward-WORD-begin))
+                              (t
+                               (evil-backward-word-begin)
+                               (evil-forward-word-begin)))
+                        (= initial-col (current-column)))))))
       (save-excursion
         (while (progn
                  (let* ((current-pos (point))
@@ -96,12 +109,16 @@ first is the upper left bound and the second is the lower right bound."
                               ;; handles case when at 1 char word at eol
                               (looking-at (rx any eol))
                               (save-excursion
-                                (evil-forward-word-begin)
+                                (if big-word
+                                    (evil-forward-WORD-begin)
+                                  (evil-forward-word-begin))
                                 ;; handles case where at 1 char word otherwise
                                 (= (point) (1+ current-pos))))
                              (current-column)
                            (save-excursion
-                             (evil-forward-word-end)
+                             (if big-word
+                                 (evil-forward-WORD-end)
+                               (evil-forward-word-end))
                              (current-column)))))
                    (setq max-pos current-pos)
                    (when (> right-col max-right-col)
@@ -109,52 +126,60 @@ first is the upper left bound and the second is the lower right bound."
                  (and (condition-case err
                           (progn (funcall movement-function) t)
                         ('error nil))
-                      (= col-pos (current-column))
+                      (= initial-col (current-column))
                       (continue-check-function))))))
     (list max-pos max-right-col)))
 
-(defun -get-top-bounds (behind-char-type &optional max-right-col)
+(defun -get-top-bounds (behind-char-type big-word &optional max-right-col)
   "Find the upper bounds of a column.
 See `evil-textobj-word-column--get-bounds' for documentation of
-BEHIND-CHAR-TYPE and MAX-RIGHT-COL."
-  (-get-bounds behind-char-type #'evil-previous-line max-right-col))
+BEHIND-CHAR-TYPE, BIG-WORD, and MAX-RIGHT-COL."
+  (-get-bounds behind-char-type #'evil-previous-line big-word max-right-col))
 
-(defun -get-bottom-bounds (behind-char-type &optional max-right-col)
+(defun -get-bottom-bounds (behind-char-type big-word &optional max-right-col)
   "Find the lower bounds of a column.
 See `evil-textobj-word-column--get-bounds' for documentation of
-BEHIND-CHAR-TYPE and MAX-RIGHT-COL."
-  (-get-bounds behind-char-type #'evil-next-line max-right-col))
+BEHIND-CHAR-TYPE, BIG-WORD, and MAX-RIGHT-COL."
+  (-get-bounds behind-char-type #'evil-next-line big-word max-right-col))
 
-(defun -create-range ()
-  "Return a column range based on the point."
+(defun -create-range (big-word)
+  "Return a column range based on the point.
+If BIG-WORD is non-nil, use an evil WORD for the width of the column."
   ;; this is necessary so c and d don't alter evil-next/previous-line:
   (evil-normal-state)
   (save-excursion
-    (let* ((behind-char-type (-get-basis))  ; ensures at word start
+    (let* ((behind-char-type (-get-basis big-word)) ; ensures at word start
            (top-bounds (when behind-char-type
-                         (-get-top-bounds behind-char-type)))
+                         (-get-top-bounds behind-char-type big-word)))
            (top-left-pos (when top-bounds
                            (car top-bounds)))
            (max-right-col (when top-bounds
                             (cadr top-bounds)))
            (bottom-bounds (when top-bounds
-                            (-get-bottom-bounds behind-char-type max-right-col)))
+                            (-get-bottom-bounds behind-char-type big-word
+                                                max-right-col)))
            (bottom-right-pos (when bottom-bounds
                                (goto-char (car bottom-bounds))
                                ;; case where beyond eol?
-                               (evil-goto-column (cadr bottom-bounds))
+                               (evil-goto-column (1+ (cadr bottom-bounds)))
                                (point))))
       (when (and top-left-pos bottom-right-pos)
         ;; note:
-        ;; 'rectangle will make selection one char to the left
+        ;; 'rectangle will make selection one char to the left (so 1+ above)
         ;; 'block gives more incorrect selection
-        (evil-range top-left-pos (1+ bottom-right-pos) 'rectangle)))))
+        (evil-range top-left-pos bottom-right-pos 'rectangle)))))
 
-(evil-define-text-object evil-textobj-word-column-a-column
+(evil-define-text-object evil-textobj-word-column-inner-column
   (count &optional beg end type)
   "Select a word column.
 COUNT, BEG, END, and TYPE have no effect. This text object cannot take a count."
-  (-create-range))
+  (-create-range nil))
+
+(evil-define-text-object evil-textobj-word-column-inner-COLUMN
+  (count &optional beg end type)
+  "Select a word column.
+COUNT, BEG, END, and TYPE have no effect. This text object cannot take a count."
+  (-create-range t))
 
 ;; end of namespace
 )
