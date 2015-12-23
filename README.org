@@ -1,16 +1,37 @@
 * About
-This package is a port of [[https://github.com/coderifous/textobj-word-column.vim][textobj-word-column.vim]]. It provides text objects for selecting a column whose width is determined by an evil word or WORD. This can be a convenient way to start a visual block selection for example.
+This package is a port of [[https://github.com/coderifous/textobj-word-column.vim][textobj-word-column.vim]]. It provides text objects for selecting a column with a width determined by an evil word or WORD by default and the user to define their own column text objects. This package is also comparable to[[https://github.com/vim-utils/vim-vertical-move][ vim-vertical-move]] and may be a convenient way to start a visual block selection.
 
-Currently, there is no outer text object because I never found it useful in the vim version and it would be more difficult to implement. If anyone would find it useful, feel free to make an issue. Another difference from the original plugin is that whitespace (only) will not be selected as a column.
+Currently, there is no outer text object. In many cases, the inner and outer text objects in the vim plugin behaved the same, and I never found myself using the outer text object. If someone wants one, I can try to add one. Another difference from the original plugin is that a word column will never be composed of only whitespace.
 
 This package takes a fairly generic approach for determining what a column is. If you find a situation where you think the selection should be different or there is clearly a bug, please make an issue.
 
 * Configuration
 No keys are bound by default. Here is some suggested configuration:
 #+begin_src emacs-lisp
-(define-key evil-inner-text-objects-map "c" 'evil-textobj-word-column-inner-column)
-(define-key evil-inner-text-objects-map "C" 'evil-textobj-word-column-inner-COLUMN)
+(define-key evil-inner-text-objects-map "c" 'evil-textobj-column-word)
+(define-key evil-inner-text-objects-map "C" 'evil-textobj-column-WORD)
 #+end_src
 
 If you are using a comment text object (for example the one from [[https://github.com/luxbock/evil-cleverparens][evil-cleverparens]]), you may want to use something like =k= instead.
+
+* New Text Objects
+This plugin can potentially be used to create other text objects that have a width of something other than a word.
+
+For example, this is how ~evil-textobj-column-word~ is defined:
+#+begin_src emacs-lisp
+(evil-define-text-object evil-textobj-column-word
+  (count &optional beg end type)
+  (evil-textobj-column-create-range #'evil-forward-word-begin 
+                                    #'evil-backward-word-begin
+                                    #'evil-forward-word-end))
+#+end_src
+
+This functionality is probably most useful for variants of an evil word (e.g. maybe a camel case word). Using different motions may introduce new edge cases, so please make an issue if you encounter any problems.
+
+* Basic Column Explanation
+The left column boundary by default is the start of a word. If the point is already at the correct position, calling the backward-begin motion followed by the forward-begin motion should keep the point at the same column position. Otherwise, calling the backward-begin motion should move the point to the left boundary.
+
+The upper and lower column boundaries are determined by moving up or down until the new word (by default) start no longer matches the initial column (or the end or start of the buffer is reached).
+
+The right column boundary is determined by the maximum column reachable by the forward-end motion.
 
