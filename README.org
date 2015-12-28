@@ -1,5 +1,5 @@
 * About
-This package is a port of [[https://github.com/coderifous/textobj-word-column.vim][textobj-word-column.vim]]. It provides text objects for selecting a column with a width determined by an evil word or WORD by default and the user to define their own column text objects. This package is also comparable to[[https://github.com/vim-utils/vim-vertical-move][ vim-vertical-move]] and may be a convenient way to start a visual block selection.
+This package is a port of [[https://github.com/coderifous/textobj-word-column.vim][textobj-word-column.vim]]. By default, it provides text objects for columns of a width determined by an evil word or WORD. The user can also define their own column text objects. This package is also comparable to[[https://github.com/vim-utils/vim-vertical-move][ vim-vertical-move]] and may be a convenient way to start a visual block selection.
 
 Currently, there is no outer text object. In many cases, the inner and outer text objects in the vim plugin behaved the same, and I never found myself using the outer text object. If someone wants one, I can try to add one. Another difference from the original plugin is that a word column will never be composed of only whitespace.
 
