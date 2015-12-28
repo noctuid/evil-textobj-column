@@ -142,7 +142,13 @@ first is the upper left bound and the second is the lower right bound."
             (and (condition-case err
                      (progn (funcall line-motion) t)
                    ('error nil))
-                 (= initial-col (current-column))
+                 ;; workaround due to current-column giving 1 when
+                 ;; it should give 0
+                 (let ((new-column (if (and (looking-at (rx eol))
+                                            (looking-back (rx bol)))
+                                       0
+                                     (current-column))))
+                   (= initial-col new-column))
                  (-continue-p behind-char-type initial-col
                               backward-begin-motion forward-begin-motion)))))
     (list max-pos max-right-col)))
